@@ -1,0 +1,17 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the Custom module.
+ */
+
+/**
+ * Implements hook_uninstall().
+ */
+function custom_uninstall() {
+    variable_del('user_log_block_limit');
+}
+
+function custom_install() {
+    variable_set('user_log_block_limit',10);
+}

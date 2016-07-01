@@ -1,0 +1,9 @@
+name = Custom
+description = "custom module for coding"
+core = 7.x
+configure = admin/config/custom-user-logLimit
+
+; Information added on 2016-07-01
+version = "7.x"
+core = "7.x"
+

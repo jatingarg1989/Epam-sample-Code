@@ -1,0 +1,106 @@
+<?php
+
+/**
+ * Implements hook_help().
+ */
+function custom_help($path, $arg) {
+  switch ($path) {
+    case 'admin/help#custom':
+        $output = '';
+        $output .= '<p>' . t('Custom Module Help') . '</p>';
+        $output .= '<ul>' ;
+        $output .= '<li>'.t('Custom Module Provide a Block which list down all the users who login into system') . '</li>';
+        $output .= '<li>'.t('Block will Shown to each type of User') . '</li>';
+        $output .= '<li>'.t('By Default Module will show 10 user per page, But this page limit can be changed through <a href="@config_url">Config URL</a>', array('@config_url' => url('admin/config/custom-user-logLimit'))) . '</li>';
+        $output .= '<li>'.t('One Permision is created (Administer User Log Limit), User who have this permisson can configure the limit per page') . '</li>';
+        $output .= '</ul>' ;
+    return $output;
+  }
+}
+
+
+
+/*
+ * Implementation of HOOK_MENU
+ */
+function custom_menu() {
+    $items['admin/config/custom-user-logLimit'] = array( // URL for admin page
+        'title' => t('User Limit'),
+        'type' => MENU_CALLBACK,
+        'page callback' => 'drupal_get_form',
+        'page arguments' => array('user_log_limit'),
+        'access arguments' => array('administer User Log Limit'),
+    ); 
+    return $items;
+}
+
+function user_log_limit($form, &$form_state){ // Admin form, User can config the User limit
+    $form['user_log_block_limit'] = array(
+        '#title' => t('User Limit'),
+        '#type' => 'textfield',
+        '#size' => 10,
+        '#default_value' => variable_get('user_log_block_limit',10),
+        '#element_validate' => array('element_validate_integer_positive'), 
+    );
+    
+    return system_settings_form($form);
+}
+
+function custom_permission() { // Create User permisson, User can access Admin config page
+  return array(
+    'administer User Log Limit' => array(
+      'title' => t('Administer User Log Limit'),
+      'description' => t('Perform for change Limit of user log list Page'),
+    ),
+  );
+}
+
+
+/*
+ *  Custom Block for Block, who show User, whom login into System
+ */
+function custom_block_info() {
+    $blocks['user_list'] = array(
+        'info' => t('User List'),
+        'cache' => DRUPAL_NO_CACHE,
+    );  
+    return $blocks;
+}
+
+function custom_block_view($delta = '') {
+    $block = array();
+    switch ($delta) {
+        case 'user_list':
+            $block['subject'] = t('User List');
+            $block['content'] = user_list();
+            break;      
+    }
+    return $block;
+}
+
+
+function user_list(){
+    global $base_url;
+    $per_page = variable_get('user_log_block_limit',10); 
+    $output = '';
+    $header = array('User Id', 'User name', 'Login Time');
+    $rows = array();
+    
+    $query = db_select('users', 'u')
+          ->fields('u', array('name', 'uid', 'login'))
+          ->condition('status', 1)
+          ->condition('login', 0 , '>')
+          ->orderBy('login', 'DESC');
+    $result = $query->execute();
+    while($record = $result->fetchAssoc()) {
+         $rows []= array($record['uid'], l($record['name'],'user/'.$record['uid']), ($record['login']) ? date('m-d-Y, g:i:s - a',$record['login']) : 'Never');
+    }
+    
+    $current_page = pager_default_initialize(count($rows), $per_page);
+    $chunks = array_chunk($rows, $per_page, TRUE);
+    $output = theme('table', array('header' => $header, 'rows' => $chunks[$current_page]));
+    $output .= theme('pager', array('quantity',count($rows)));
+    return $output;
+}
+
+
